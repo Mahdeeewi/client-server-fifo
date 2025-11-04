@@ -1,0 +1,7 @@
+# Ignore build artifacts
+*.o
+*.out
+*.exe
+*.fifo
+fifo1
+fifo2
