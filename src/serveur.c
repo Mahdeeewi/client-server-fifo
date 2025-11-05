@@ -1,6 +1,9 @@
 #include "serv_cli_fifo.h"
 #include "Handlers_Serv.h"
 
+/* Global variable for acknowledgment tracking */
+int ack_received = 0;
+
 int main() {
     /* Déclarations */
     int fd_fifo1, fd_fifo2;
@@ -9,11 +12,12 @@ int main() {
     int i;
     int bytes_read;
     
-   
+    /* Ignorer le signal SIGPIPE pour éviter la terminaison */
+    signal(SIGPIPE, SIG_IGN);
     
     /* Installation des Handlers */
     signal(SIGUSR1, hand_reveil);
-    signal(SIGINT, fin_serveur);  /* This will handle Ctrl+C */
+    signal(SIGINT, fin_serveur);
     
     /* Création des tubes nommés */
     mkfifo(FIFO1, 0666);
@@ -25,11 +29,10 @@ int main() {
     printf("Server started with PID %d\n", getpid());
     printf("Press Ctrl+C to stop the server and clean up FIFOs\n");
     
-    /* Ouverture des tubes nommés UNE FOIS au début */
+    /* Ouverture des tubes nommés */
     printf("Server: Waiting for client connection...\n");
     fd_fifo1 = open(FIFO1, O_RDONLY);
     fd_fifo2 = open(FIFO2, O_WRONLY);
-    
     
     while(1) {
         /* lecture d'une question (BLOCKS until client writes) */
@@ -52,8 +55,17 @@ int main() {
                 if(kill(quest.client_id, SIGUSR1) == 0) {
                     printf("Server: Sent %d numbers to client %d\n", 
                            quest.n, quest.client_id);
+                    printf("Server: Waiting for client acknowledgment...\n");
+                    
+                    /* ATTENTE DE L'ACCUSÉ DE RÉCEPTION */
+                    ack_received = 0;
+                    while(ack_received == 0) {
+                        pause();  // Block until client sends SIGUSR1 back
+                    }
+                    printf("Server: Client %d acknowledged receipt\n", quest.client_id);
+                    
                 } else {
-                    printf("Server: Failed to signal client %d (maybe client terminated)\n", quest.client_id);
+                    printf("Server: Failed to signal client %d\n", quest.client_id);
                 }
             } else {
                 printf("Server: Failed to write response to client %d\n", quest.client_id);
@@ -62,15 +74,12 @@ int main() {
             /* Client closed the connection */
             printf("Server: All clients disconnected. Waiting for new connections...\n");
             
-            /* Fermer et reouvrir les FIFOs pour attendre de nouveaux clients */
             close(fd_fifo1);
             close(fd_fifo2);
             
-           
             fd_fifo1 = open(FIFO1, O_RDONLY);
             fd_fifo2 = open(FIFO2, O_WRONLY);
-          
-        } 
+        }
     }
     
     return 0;

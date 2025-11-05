@@ -3,9 +3,12 @@
 
 #include "serv_cli_fifo.h"
 
+extern int ack_received; 
+
 /* Handler for SIGUSR1 - wake up server when client has read the response */
 void hand_reveil() {
- 
+ ack_received = 1;
+  
 }
 
 /* Handler for termination - clean up before server exit */
