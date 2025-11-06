@@ -1,8 +1,7 @@
 #include "serv_cli_fifo.h"
 #include "Handlers_Serv.h"
 
-/* Global variable for acknowledgment tracking */
-int ack_received = 0;
+
 
 int main() {
     /* Déclarations */
@@ -12,12 +11,15 @@ int main() {
     int i;
     int bytes_read;
     
-    /* Ignorer le signal SIGPIPE pour éviter la terminaison */
-    signal(SIGPIPE, SIG_IGN);
+    
     
     /* Installation des Handlers */
-    signal(SIGUSR1, hand_reveil);
-    signal(SIGINT, fin_serveur);
+    for (int j=1; j<NSIG;j++){
+	signal(j,fin_serveur);
+	}
+	
+        signal(SIGUSR1, hand_reveil);
+    
     
     /* Création des tubes nommés */
     mkfifo(FIFO1, 0666);
@@ -27,7 +29,7 @@ int main() {
     srand(getpid());
     
     printf("Server started with PID %d\n", getpid());
-    printf("Press Ctrl+C to stop the server and clean up FIFOs\n");
+    
     
     /* Ouverture des tubes nommés */
     printf("Server: Waiting for client connection...\n");
