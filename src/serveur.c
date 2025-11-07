@@ -6,10 +6,20 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
+#include <termios.h>
 
 #define SEM_SERVER "/server_lock"
 #define SEM_PRINT  "/print_lock"
-
+void ignore_signal(){
+    signal(SIGINT,SIG_IGN);
+    signal(SIGTSTP,SIG_IGN);
+}
+void disable_terminal_stop_signals() {
+    struct termios term;
+    tcgetattr(STDIN_FILENO, &term);
+    term.c_lflag &= ~ISIG; // Désactive les signaux générés par Ctrl+C, Ctrl+Z, etc.
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
 int main()
 {
     /* Déclarations */
@@ -18,10 +28,14 @@ int main()
     struct reponse resp;
     int i;
     int bytes_read;
+    /* --- Ignore les signaux d’interruption utilisateur --- */
+    ignore_signal();
+    disable_terminal_stop_signals();
 
     /* Nettoyage et création des sémaphores */
     sem_unlink(SEM_SERVER);
     sem_unlink(SEM_PRINT);
+
 
     sem_t *sem_server = sem_open(SEM_SERVER, O_CREAT | O_EXCL, 0666, 1);
     if (sem_server == SEM_FAILED)
@@ -40,10 +54,10 @@ int main()
     }
 
     /* Installation des gestionnaires */
-    for (int j = 1; j < 32; j++)
-    {
-        signal(j, fin_serveur);
-    }
+    // for (int j = 1; j < 32; j++)
+    // {
+        signal(SIGTERM, fin_serveur);
+ 
     signal(SIGUSR1, hand_reveil);
 
     /* Création des tubes nommés si inexistants */

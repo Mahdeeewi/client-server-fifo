@@ -9,7 +9,7 @@
 #include <stdio.h>
 #define SEM_PRINT "/print_lock"
 
-int main() {
+int main(){
     /* --- Déclarations --- */
     int fd_fifo1, fd_fifo2;
     struct question quest;
@@ -46,9 +46,7 @@ int main() {
     quest.client_id = getpid();
     quest.n = rand() % NMAX + 1;
 
-    sem_wait(print_mutex);
-    printf("Client %d : Demande de %d nombres aléatoires\n", getpid(), quest.n);
-    sem_post(print_mutex);
+ 
 
     write(fd_fifo1, &quest, sizeof(struct question));
 
@@ -65,6 +63,7 @@ int main() {
 
     /* --- Affichage synchronisé de la réponse --- */
     sem_wait(print_mutex);
+    printf("Client %d : Demande de %d nombres aléatoires\n", getpid(), quest.n);
     printf("Client %d : Réponse reçue du serveur %d\n", getpid(), resp.server_id);
     printf("→ Nombres générés : ");
     for (i = 0; i < quest.n; i++) {
