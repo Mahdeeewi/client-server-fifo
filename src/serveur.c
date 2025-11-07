@@ -8,12 +8,11 @@
 #include <unistd.h>
 #include <termios.h>
 
-#define SEM_SERVER "/server_lock"
+
 #define SEM_PRINT  "/print_lock"
-void ignore_signal(){
-    signal(SIGINT,SIG_IGN);
-    signal(SIGTSTP,SIG_IGN);
-}
+
+
+
 void disable_terminal_stop_signals() {
     struct termios term;
     tcgetattr(STDIN_FILENO, &term);
@@ -28,47 +27,38 @@ int main()
     struct reponse resp;
     int i;
     int bytes_read;
-    /* --- Ignore les signaux d’interruption utilisateur --- */
-    ignore_signal();
+    
+    
     disable_terminal_stop_signals();
 
     /* Nettoyage et création des sémaphores */
-    sem_unlink(SEM_SERVER);
+  
     sem_unlink(SEM_PRINT);
-
-
-    sem_t *sem_server = sem_open(SEM_SERVER, O_CREAT | O_EXCL, 0666, 1);
-    if (sem_server == SEM_FAILED)
-    {
-        perror("Server: sem_open server_lock");
-        exit(EXIT_FAILURE);
-    }
-
+  
     sem_t *sem_print = sem_open(SEM_PRINT, O_CREAT | O_EXCL, 0666, 1);
     if (sem_print == SEM_FAILED)
     {
         perror("Server: sem_open print_lock");
-        sem_close(sem_server);
-        sem_unlink(SEM_SERVER);
+      
         exit(EXIT_FAILURE);
     }
 
-    /* Installation des gestionnaires */
-    // for (int j = 1; j < 32; j++)
-    // {
-        signal(SIGTERM, fin_serveur);
- 
+    /* Installation des handlers */
+    
+    signal(SIGTERM, fin_serveur);	
     signal(SIGUSR1, hand_reveil);
-
-    /* Création des tubes nommés si inexistants */
+    signal(SIGINT,SIG_IGN);
+    signal(SIGTSTP,SIG_IGN);
+    
+    /* Création des tubes nommés */
     mkfifo(FIFO1, 0666);
     mkfifo(FIFO2, 0666);
 
     srand(getpid());
 
     sem_wait(sem_print);
-    printf("Server started with PID %d\n", getpid());
-    printf("Server: Waiting for client connection...\n");
+    printf("Serveur démarré avec PID %d\n", getpid());
+    printf("Serveur : En attente de connexion du client...\n");
     sem_post(sem_print);
 
     /* Ouverture des tubes nommés (bloquant jusqu’à connexion client) */
@@ -83,7 +73,7 @@ int main()
         if (bytes_read == sizeof(struct question))
         {
             sem_wait(sem_print);
-            printf("Server: Received request from client %d for %d numbers\n",
+            printf("Serveur : demande reçue du client %d pour %d numéros\n",
                    quest.client_id, quest.n);
             sem_post(sem_print);
 
@@ -94,24 +84,24 @@ int main()
                 resp.numbers[i] = rand() % NMAX + 1;
 
             /* Envoi de la réponse */
-            sem_wait(sem_server); // Protège l’accès aux FIFOs
+            
             if (write(fd_fifo2, &resp, sizeof(struct reponse)) == sizeof(struct reponse))
             {
-                sem_post(sem_server);
+                
                 if (kill(quest.client_id, SIGUSR1) == 0)
                 {
                     sem_wait(sem_print);
-                    printf("Server: Sent %d numbers to client %d\n",
+                    printf("SServeur : Envoi de %d nombres au client %d\n",
                            quest.n, quest.client_id);
-                    printf("Server: Waiting for client acknowledgment...\n");
+                    printf("Serveur : En attente de l'accusé de réception du client...\n");
                     sem_post(sem_print);
 
-                    ack_received = 0;
+                   
                     while (ack_received == 0)
                         pause();
 
                     sem_wait(sem_print);
-                    printf("Server: Client %d acknowledged receipt\n", quest.client_id);
+                    printf("Serveur : Client %d a accusé réception\n", quest.client_id);
                     sem_post(sem_print);
                 }
                 else
@@ -123,7 +113,7 @@ int main()
             }
             else
             {
-                sem_post(sem_server);
+                
                 sem_wait(sem_print);
                 printf("Server: Failed to write response to client %d\n", quest.client_id);
                 sem_post(sem_print);
@@ -144,9 +134,9 @@ int main()
     }
 
     /* Nettoyage final (jamais atteint en boucle infinie) */
-    sem_close(sem_server);
+    
     sem_close(sem_print);
-    sem_unlink(SEM_SERVER);
+    
     sem_unlink(SEM_PRINT);
 
     return 0;

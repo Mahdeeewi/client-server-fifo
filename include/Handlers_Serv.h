@@ -4,10 +4,11 @@
 #include "serv_cli_fifo.h"
 
 /* Variable gloable pour ACK  */
- int ack_received; 
+ volatile sig_atomic_t ack_received; 
 
 
-void hand_reveil() {
+void hand_reveil(int sig) {
+ (void)sig;
  ack_received = 1;
   
 }

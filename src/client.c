@@ -9,6 +9,8 @@
 #include <stdio.h>
 #define SEM_PRINT "/print_lock"
 
+
+
 int main(){
     /* --- Déclarations --- */
     int fd_fifo1, fd_fifo2;
